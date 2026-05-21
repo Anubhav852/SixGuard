@@ -5,8 +5,7 @@ from groq import Groq
 
 # Initialize clients
 r = redis.Redis(host='localhost', port=6379, db=0)
-client = Groq(api_key="YOUR_GROQ_API_KEY")
-
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 def process_event(event_data):
     print(f"Analyzing payload: {event_data}")
     # Here is where the AI magic happens
