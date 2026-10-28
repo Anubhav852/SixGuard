@@ -1,4 +1,5 @@
 fastapi
 uvicorn
-redis
+pymongo[srv]
 groq
+python-dotenv
