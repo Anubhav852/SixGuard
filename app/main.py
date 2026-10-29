@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import threading
@@ -74,8 +75,15 @@ def health():
 def scan_payload(payload: dict, request: Request):
     rate_limit(request)
     ip = str(payload.get("ip") or "").strip()[:45]
-    body = payload.get("payload")
-    text = body if isinstance(body, str) else json.dumps(payload)
+    b64 = payload.get("payload_b64")
+    if b64:
+        try:
+            text = base64.b64decode(b64, validate=True).decode("utf-8", "replace")
+        except Exception:
+            raise HTTPException(400, "Invalid payload encoding")
+    else:
+        body = payload.get("payload")
+        text = body if isinstance(body, str) else json.dumps(payload)
     if len(text) > 2000:
         raise HTTPException(413, "Payload too large (max 2000 chars)")
     if ip and blocklist.find_one({"_id": ip}):

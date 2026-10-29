@@ -43,6 +43,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const rndIp = () => `203.0.113.${1 + Math.floor(Math.random() * 253)}`;
+const enc = s => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 const presets = {
   "SQL injection": "' OR 1=1; DROP TABLE users;--",
   "XSS": "<img src=x onerror=alert(document.cookie)>",
@@ -70,8 +71,11 @@ async function send() {
   $("send").disabled = true; show("Queued, waiting for worker...");
   try {
     const res = await fetch("/scan", {method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ip: ip.value.trim(), payload: payload.value})});
-    const body = await res.json();
+      body: JSON.stringify({ip: ip.value.trim(), payload_b64: enc(payload.value)})});
+    const raw = await res.text();
+    let body;
+    try { body = JSON.parse(raw); }
+    catch { show(`<div class="text-amber-400">Unexpected response (HTTP ${res.status}). Wait 30 seconds and retry.</div>`); $("send").disabled = false; return; }
     if (res.status === 403) show(`<div class="text-red-400 text-2xl font-bold">403 BLOCKED</div><p class="mt-2">${esc(body.detail)}. The request was rejected at the gateway before reaching the AI. Click "New IP" to send as someone else.</p>`);
     else if (!res.ok) show(`<div class="text-amber-400">${esc(body.detail)}</div>`);
     else {
@@ -86,7 +90,10 @@ async function send() {
   $("send").disabled = false; refresh();
 }
 async function refresh() {
-  const [ev, bl] = await Promise.all([fetch("/api/events").then(r => r.json()), fetch("/api/blocklist").then(r => r.json())]);
+  const [ev, bl] = await Promise.all([
+    fetch("/api/events").then(r => r.ok ? r.json() : []),
+    fetch("/api/blocklist").then(r => r.ok ? r.json() : [])
+  ]);
   $("feed").innerHTML = ev.map(e => `<tr class="border-t border-slate-800"><td class="py-1 font-mono">${esc(e.ip)}</td>
     <td class="max-w-[220px] truncate font-mono">${esc(e.payload)}</td>
     <td class="${e.malicious ? "text-red-400" : e.malicious === false ? "text-emerald-400" : "text-amber-400"}">${e.malicious ? esc(e.category) : e.malicious === false ? "safe" : "error"}</td>
@@ -95,4 +102,4 @@ async function refresh() {
 }
 async function resetAll() { await fetch("/api/reset", {method: "POST"}); refresh(); }
 refresh(); setInterval(refresh, 3000);
-</script></body></html>
+</script></body></html> 
