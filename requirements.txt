@@ -2,4 +2,4 @@ fastapi
 uvicorn
 pymongo[srv]
 groq
-python-dotenv
+python-dotenv   
